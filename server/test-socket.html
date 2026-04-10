@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.io Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #8ab4f8;
+            color: #000;
+        }
+        button:hover {
+            background: #669df6;
+        }
+        input {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #333;
+            color: #fff;
+        }
+        #logs {
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #8ab4f8;
+            padding-left: 10px;
+        }
+        .log-error {
+            border-left-color: #ea4335;
+        }
+        .log-success {
+            border-left-color: #34a853;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔌 Socket.io Signaling Server Test</h1>
+    
+    <div class="container">
+        <h3>Connection Status</h3>
+        <p id="status">Disconnected</p>
+        <p>Socket ID: <span id="socketId">-</span></p>
+    </div>
+
+    <div class="container">
+        <h3>Join Room</h3>
+        <input type="text" id="roomId" placeholder="Enter Room ID" value="test-room">
+        <input type="text" id="userId" placeholder="User ID (auto-generated)">
+        <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div class="container">
+        <h3>Send Signal</h3>
+        <input type="text" id="targetUserId" placeholder="Target User ID">
+        <button onclick="sendSignal()">Send Test Signal</button>
+    </div>
+
+    <div class="container">
+        <h3>Event Logs</h3>
+        <button onclick="clearLogs()">Clear</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let socket;
+        let myUserId;
+
+        // Connect to Socket.io server
+        function connect() {
+            log('Connecting to server...', 'info');
+            
+            socket = io('http://localhost:5000', {
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                document.getElementById('status').textContent = '✅ Connected';
+                document.getElementById('status').style.color = '#34a853';
+                document.getElementById('socketId').textContent = socket.id;
+                myUserId = socket.id;
+                document.getElementById('userId').value = socket.id;
+                log(`Connected with ID: ${socket.id}`, 'success');
+            });
+
+            socket.on('disconnect', () => {
+                document.getElementById('status').textContent = '❌ Disconnected';
+                document.getElementById('status').style.color = '#ea4335';
+                log('Disconnected from server', 'error');
+            });
+
+            socket.on('room-joined', (roomId) => {
+                log(`✅ Joined room: ${roomId}`, 'success');
+            });
+
+            socket.on('user-connected', (userId) => {
+                log(`👤 User connected: ${userId}`, 'success');
+            });
+
+            socket.on('receiving-signal', ({ signal, userId }) => {
+                log(`📡 Received signal from: ${userId}`, 'info');
+                log(`Signal data: ${JSON.stringify(signal).substring(0, 100)}...`, 'info');
+            });
+        }
+
+        function joinRoom() {
+            const roomId = document.getElementById('roomId').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!roomId) {
+                log('❌ Please enter a room ID', 'error');
+                return;
+            }
+
+            log(`Joining room: ${roomId}...`);
+            socket.emit('join-room', roomId, userId || socket.id);
+        }
+
+        function sendSignal() {
+            const targetUserId = document.getElementById('targetUserId').value;
+            
+            if (!targetUserId) {
+                log('❌ Please enter a target user ID', 'error');
+                return;
+            }
+
+            const testSignal = {
+                type: 'offer',
+                sdp: 'test-sdp-data'
+            };
+
+            log(`Sending signal to: ${targetUserId}...`);
+            socket.emit('signal-data', {
+                signal: testSignal,
+                targetUserId: targetUserId
+            });
+        }
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : ''}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logs.insertBefore(entry, logs.firstChild);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        connect();
+    </script>
+</body>
+</html>
