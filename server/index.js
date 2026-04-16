@@ -14,7 +14,7 @@ app.use(express.json());
 // Socket.io setup with detailed logging
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000', // React client URL
+    origin: process.env.CLIENT_URL || 'http://localhost:3000', // React client URL
     methods: ['GET', 'POST'],
     credentials: true,
   },

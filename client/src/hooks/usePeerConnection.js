@@ -15,7 +15,8 @@ function usePeerConnection(roomId, localStream) {
     console.log('[PEER] Initializing peer connection for room:', roomId);
     
     // Connect to Socket.io server
-    socketRef.current = io.connect('http://localhost:5000', {
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+    socketRef.current = io.connect(serverUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
